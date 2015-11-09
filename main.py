@@ -22,4 +22,4 @@ def make_mutations(fasta_path, fasta_out, mutation_rate):
     fasta.seq = new_seq
     SeqIO.write(fasta, fasta_out, 'fasta')
 
-make_mutations('/home/kirill/git_assemblers/bacteria.fasta', '/home/kirill/git_assemblers/bacteria_alt.fasta', 20)
+# make_mutations('/home/kirill/git_assemblers/bacteria.fasta', '/home/kirill/git_assemblers/bacteria_alt.fasta', 20)

@@ -48,7 +48,28 @@ def generate_dirs(input_genome_fasta, out_dir, read_length_list, mutations_list,
             for error in error_list:
                 error_prefix = join(mutation_prefix, str(error) + "error_per_100")
                 os.mkdir(error_prefix)
-                shutil.copy(input_genome_fasta, os.path. os.path.basename(input_genome_fasta))
+
+                original_fasta = join(error_prefix, os.path.basename(input_genome_fasta))
+                mutated_fasta = join(error_prefix, '_mutated.'.join(os.path.basename(input_genome_fasta).split('.')))
+                shutil.copy(input_genome_fasta, original_fasta)
+                make_mutations(input_genome_fasta, mutated_fasta, error)
+
+                dwg_original_temp = join(error_prefix, 'temp1')
+                dwg_mutated_temp = join(error_prefix, 'temp2')
+                os.mkdir(dwg_original_temp)
+                os.mkdir(dwg_mutated_temp)
+
+                run_dwg(dwg_path, original_fasta, dwg_original_temp, 'temp', error, read_length)
+                run_dwg(dwg_path, mutated_fasta, dwg_mutated_temp, 'temp', error, read_length)
+
+                united_reads_path = join(error_prefix, 'reads.fastq')
+                unite2fastq(join(dwg_original_temp, 'temp.bfast.fastq'), join(dwg_mutated_temp, 'temp.bfast.fastq'), united_reads_path)
+
+                shutil.rmtree(dwg_original_temp)
+                shutil.rmtree(dwg_mutated_temp)
+
+                os.rm(original_fasta)
+                os.rm(mutated_fasta)
 
 
 

@@ -8,16 +8,18 @@ from Bio import SeqIO
 from Bio.Alphabet import IUPAC
 import random
 import shutil
+# import subprocess
+from multiprocessing import Process
 
 def unite2fastq(file1, file2, destination):
     out_file = open(destination, 'w')
     f1 = open(file1)
     f2 = open(file2)
-    shutil.copyfileobj(file1, out_file)
-    shutil.copyfileobj(file2, out_file)
-    out_dile.close()
-    file1.close()
-    file2.close()
+    shutil.copyfileobj(f1, out_file)
+    shutil.copyfileobj(f2, out_file)
+    out_file.close()
+    f1.close()
+    f2.close()
 
 def make_mutations(fasta_path, fasta_out, mutation_rate):
     fasta = list(SeqIO.parse(fasta_path, 'fasta'))[0]
@@ -32,10 +34,38 @@ def make_mutations(fasta_path, fasta_out, mutation_rate):
     SeqIO.write(fasta, fasta_out, 'fasta')
 
 def run_dwg(dwg_path, input_fasta, out_dir, prefix, error_rate, read_length, mean_coverage=30, random_read_prob=0, mutation_rate=0, distance_between_read_pairs=1000):
-    subpreocess.call([dwg_path, '-e', str(error_rate), '-E', str(error_rate), '-d', str(distance_between_read_pairs), '-C', str(mean_coverage), '-1', str(read_length), '-2', str(read_length), '-y', str(random_read_prob), '-r', str(mutation_rate), input_fasta, join(out_dir, prefix)])
+    subprocess.call([dwg_path, '-e', str(error_rate), '-E', str(error_rate), '-d', str(distance_between_read_pairs), '-C', str(mean_coverage), '-1', str(read_length), '-2', str(read_length), '-y', str(random_read_prob), '-r', str(mutation_rate), input_fasta, join(out_dir, prefix)])
     return join(out_dir, prefix + '.bfast.fastq')
 
-def generate_dirs(input_genome_fasta, out_dir, read_length_list, mutations_list, error_list):
+def mult_velvet_run(param_list, threads_limit=100):
+    velvet_pr = []
+    for item in param_list:
+        pr = Process(target=run_velvet, args=item)
+        pr.start()
+        velvet_pr.append(pr)
+        if(len(velvet_pr) >= threads_limit):
+            join_velvet_threads(velvet_pr)
+            velvet_pr = []
+    return velvet_pr
+
+def run_velvet(velvet_path, quast_path, reads, out_velvet_dir, out_velvet_test_dir, current_hash):
+    os.mkdir(out_velvet_dir)
+    os.mkdir(out_velvet_test_dir)
+    subprocess.call([join(velvet_path, 'velveth'), out_velvet_dir, str(current_hash), '-fastq', reads])
+    subprocess.call([join(velvet_path, 'velvetg'), out_velvet_dir])
+    subprocess.call([join(quast_path, 'quast.py'), '-o', out_velvet_test_dir, join(out_velvet_dir, 'contigs.fa')])
+    shutil.rmtree(out_velvet_dir)
+    compress_quast_results(out_velvet_test_dir)
+
+def join_velvet_threads(threads):
+    for thread in threads:
+        thread.join()
+    return
+
+def compress_quast_results(out_velvet_test_dir):
+    pass
+
+def generate_dirs(input_genome_fasta='/home/kemelyanov/Diploma/Initial_information/bacteria.fasta', out_dir='/home/kemelyanov/Diploma/Out', dwg_path='/home/kemelyanov/Diploma/Program/DWGSIM/dwgsim', v_path='/home/kemelyanov/Diploma/Program/velvet', s_path='', q_path='/home/kemelyanov/Diploma/Program/Quast', read_length_list=[400], mutations_list=[5, 10], error_list=[0.02]):
     if(os.path.exists(out_dir)):
         shutil.rmtree(out_dir)
     os.mkdir(out_dir)
@@ -52,7 +82,7 @@ def generate_dirs(input_genome_fasta, out_dir, read_length_list, mutations_list,
                 original_fasta = join(error_prefix, os.path.basename(input_genome_fasta))
                 mutated_fasta = join(error_prefix, '_mutated.'.join(os.path.basename(input_genome_fasta).split('.')))
                 shutil.copy(input_genome_fasta, original_fasta)
-                make_mutations(input_genome_fasta, mutated_fasta, error)
+                make_mutations(input_genome_fasta, mutated_fasta, mutation)
 
                 dwg_original_temp = join(error_prefix, 'temp1')
                 dwg_mutated_temp = join(error_prefix, 'temp2')
@@ -68,9 +98,30 @@ def generate_dirs(input_genome_fasta, out_dir, read_length_list, mutations_list,
                 shutil.rmtree(dwg_original_temp)
                 shutil.rmtree(dwg_mutated_temp)
 
-                os.rm(original_fasta)
-                os.rm(mutated_fasta)
+                os.remove(original_fasta)
+                os.remove(mutated_fasta)
 
+                core_directory = error_prefix
+                velvet_out = join(core_directory, 'velvet_out')
+                if(not os.path.exists(velvet_out)):
+                    os.mkdir(velvet_out)
 
+                velvet_test_out = join(core_directory, 'velvet_test')
+                if(not os.path.exists(velvet_test_out)):
+                    os.mkdir(velvet_test_out)
 
+                hash_lengths = [h for h in range(20, read_length + 1) if h % 2 != 0]
+                velvet_paths = [join(velvet_out, str(h)) for h in hash_lengths]
+                quast_paths = [join(velvet_test_out, str(h)) for h in hash_lengths]
+                quast = [q_path] * len(hash_lengths)
+                velvet = [v_path] * len(hash_lengths)
+                reads4velvet = [united_reads_path] * len(hash_lengths)
+                params = zip(velvet, quast, reads4velvet, velvet_paths, quast_paths, hash_lengths)
+                # print(params)
+                # input()
+
+                threads = mult_velvet_run(params)
+                join_velvet_threads(threads)
+
+generate_dirs()
 # make_mutations('/home/kirill/git_assemblers/bacteria.fasta', '/home/kirill/git_assemblers/bacteria_alt.fasta', 20)

@@ -51,9 +51,10 @@ def mult_velvet_run(param_list, threads_limit=100):
 def run_velvet(velvet_path, quast_path, reads, out_velvet_dir, out_velvet_test_dir, current_hash):
     os.mkdir(out_velvet_dir)
     os.mkdir(out_velvet_test_dir)
-    subprocess.call([join(velvet_path, 'velveth'), out_velvet_dir, str(current_hash), '-fastq', reads])
-    subprocess.call([join(velvet_path, 'velvetg'), out_velvet_dir])
-    subprocess.call([join(quast_path, 'quast.py'), '-o', out_velvet_test_dir, join(out_velvet_dir, 'contigs.fa')])
+    subprocess.Popen([join(velvet_path, 'velveth'), out_velvet_dir, str(current_hash), '-fastq', reads], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprocess.Popen([join(velvet_path, 'velvetg'), '-min_contig_lght', str(10), out_velvet_dir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprocess.Popen([join(quast_path, 'quast.py'), '-o', out_velvet_test_dir, join(out_velvet_dir, 'contigs.fa')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print("running quast")
     shutil.rmtree(out_velvet_dir)
     compress_quast_results(out_velvet_test_dir)
 
@@ -65,7 +66,7 @@ def join_velvet_threads(threads):
 def compress_quast_results(out_velvet_test_dir):
     pass
 
-def generate_dirs(input_genome_fasta='/home/kemelyanov/Diploma/Initial_information/bacteria.fasta', out_dir='/home/kemelyanov/Diploma/Out', dwg_path='/home/kemelyanov/Diploma/Program/DWGSIM/dwgsim', v_path='/home/kemelyanov/Diploma/Program/velvet', s_path='', q_path='/home/kemelyanov/Diploma/Program/Quast', read_length_list=[400], mutations_list=[5, 10], error_list=[0.02]):
+def generate_dirs(input_genome_fasta='/home/kemelyanov/Diploma/Initial_information/bacteria.fasta', out_dir='/home/kemelyanov/Diploma/Out', dwg_path='/home/kemelyanov/Diploma/Program/DWGSIM/dwgsim', v_path='/home/kemelyanov/Diploma/Program/velvet', s_path='', q_path='/home/kemelyanov/Diploma/Program/Quast', read_length_list=[400], mutations_list=[0, 5, 10], error_list=[0]):
     if(os.path.exists(out_dir)):
         shutil.rmtree(out_dir)
     os.mkdir(out_dir)

@@ -8,7 +8,6 @@ from Bio import SeqIO
 from Bio.Alphabet import IUPAC
 import random
 import shutil
-# import subprocess
 from multiprocessing import Process
 
 def unite2fastq(file1, file2, destination):
